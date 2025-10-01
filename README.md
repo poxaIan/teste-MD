@@ -85,7 +85,7 @@ A aplicação TRF3 Events é um sistema automatizado de busca e processamento de
 ```json
 {
   "process_number": "string",
-  "active_pole": ["string"]
+  "active_pole": [nome completo - 123.XXX.XXX-XX]
 }
 ```
 
