@@ -34,7 +34,7 @@ A aplicação TRF3 Events é um sistema automatizado de busca e processamento de
    - Ligar container do _mongo_
    - Ligar container do _postgres_
    - Ligar container do redis
-   - Ligar a aplicação do _database-server_
+   - Ligar a aplicação do _database-server_ (verificar se foi rodado todas as migrations)
 
 5. **Executar aplicação**
    ```bash
