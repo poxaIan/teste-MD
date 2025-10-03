@@ -44,13 +44,13 @@ A aplicação TRF3 Events é um sistema automatizado de busca e processamento de
 
 sequenceDiagram
 
-    participant queue
+    participant UPDATE_TRF3_PROCESS_EVENTS
 
-    participant consumer
+    participant searchProcessEventsConsumer
 
-    participant service
+    participant SearchProcessEventsService
 
-    participant provider
+    participant Trf3PjeProvider
 
     participant postgres
 
@@ -58,47 +58,49 @@ sequenceDiagram
 
     %% 1) Mensagem chega na fila e é consumida
 
-    Note over queue: Mensagem aguardando consumo
+    Note over UPDATE_TRF3_PROCESS_EVENTS: Mensagem aguardando consumo
 
-    queue-->>consumer: UPDATE_TRF3_PROCESS_EVENTS<br/>JSON { processNumber: string }
+    UPDATE_TRF3_PROCESS_EVENTS-->>searchProcessEventsConsumer: JSON { processNumber: string }
 
   
 
-    %% 2) consumer chama o serviço principal
+    %% 2) searchProcessEventsConsumer chama o serviço principal
 
-    consumer->>service: SearchProcessEventsService.execute({ processNumber })
+    searchProcessEventsConsumer->>SearchProcessEventsService: SearchProcessEventsService.execute({ processNumber })
 
   
 
     %% 3) Serviço busca dados do processo no TRF3 (PJe)
+    rect rgb(128, 128, 128)
+    SearchProcessEventsService->>Trf3PjeProvider: Trf3PjeProvider.getProcessData({ processNumber })
 
-    service->>provider: Trf3PjeProvider.getProcessData({ processNumber })
-
-    provider-->>service: [ processData: {...}, process: {...} ]
-
+    Trf3PjeProvider-->>SearchProcessEventsService: [ processData: {...}, process: {...} ]
+end
   
 
     %% 4) Verificar eventos já existentes
+    rect rgb(160, 128, 128)
 
-    service->>postgres: findManyByProcessId<br/>(Busca dados já registrados)
+    SearchProcessEventsService->>postgres: findManyByProcessId<br/>(Busca dados já registrados)
 
-    postgres-->>service: processEvents<br/>(eventos já existentes)
-
+    postgres-->>SearchProcessEventsService: processEvents<br/>(eventos já existentes)
+end
   
 
     %% 5) Registrar novos eventos
+    rect rgb(128, 128, 128)
 
-    service->>postgres: createMany<br/>(registrar novos eventos)
+    SearchProcessEventsService->>postgres: createMany<br/>(registrar novos eventos)
 
-    postgres-->>service: ok
-
+    postgres-->>SearchProcessEventsService: ok
+end
   
 
     %% 6) Fim
 
-    service-->>consumer: ok
+    SearchProcessEventsService-->>searchProcessEventsConsumer: ok
 
-    consumer-->>queue: ACK<br/>(Fila pode remover a mensagem)
+    searchProcessEventsConsumer-->>UPDATE_TRF3_PROCESS_EVENTS: ACK<br/>(Fila pode remover a mensagem)
 ```
 ### Fluxo: Identificação de Participantes de Processo
 
@@ -120,48 +122,59 @@ sequenceDiagram
     Note over Consumer: active_pole = [nome completo - 123.XXX.XXX-XX]<br/>CPF somente com os 3 primeiros digitos
 
     %% ETAPA 2: Primeira tentativa - Escavador
-    Note over Service: Tentativa 1: Busca com Escavador
     Service->>EscavadorProvider: escavadorProcessSearchProvider
     EscavadorProvider-->>Service: CPFs encontrados
-    alt Escavador encontrou participantes com CPF
+    alt Busca com Escavador
+            rect rgb(128, 128, 128)
+
         Service->>Trf3HttpSender: sendToProcessualSearchByHttp<br/>{ process_number: "", cpf: "" }
         Trf3HttpSender-->>Service: dados enviados com sucesso
-    end
-
+    
+    
     %% ETAPA 3: Verificação de lacunas (nomes sem CPF no DB)
     Service->>PostgresDB: findManyByProcessoOriginario<br/>(verifica nomes já no banco)
     PostgresDB-->>Service: processos existentes
-
+    end
     %% ETAPA 4: Segunda tentativa - Enriquecimento Nova Vida
-    Note over Service: Tentativa 2: Enriquecimento com Nova Vida
-    alt Ainda tem CPFs faltando
+    else Enriquecimento com Nova Vida
+        rect rgb(160, 128, 128)
+
         Service->>NovaVidaProvider: getCpfsByFullName<br/>(busca CPF por nome completo)
         NovaVidaProvider-->>Service: CPFs encontrados por nome
         Service->>Trf3HttpSender: sendToProcessualSearchByHttp<br/>{ process_number: "", cpf: "" }
         Trf3HttpSender-->>Service: dados enviados com sucesso
-    end
-
+    
+end
     %% ETAPA 5: Terceira tentativa - Busca logada TRF3 (fallback final)
-    Note over Service: Tentativa 3: Busca Logada no TRF3
-    alt Nova Vida não encontrou todos os CPFs
+    else Busca Logada no TRF3
+        rect rgb(128, 128, 128)
+
         Service->>Trf3ProcessProvider: getParticipantIdentifications<br/>(busca logada direta)
         Trf3ProcessProvider-->>Service: identificações completas
         Service->>Trf3HttpSender: sendToProcessualSearchByHttp<br/>{ process_number: "", cpf: "" }
         Trf3HttpSender-->>Service: dados enviados com sucesso
-    end
-
+    
+end
     %% ETAPA 6: Uso de CPFs parciais (se houver)
-    Note over Service: Usa CPFs parciais
-    alt Sobrou CPFs parciais
+    
+    else Usa CPFs parciais
+        rect rgb(160, 128, 128)
+
         Service->>Trf3HttpSender: sendToProcessualSearchByHttp<br/>{ process_number: "", cpf: "" }
         Trf3HttpSender-->>Service: dados parciais enviados
+        end
     end
 
     %% ETAPA 7: Desfecho (sucesso ou erro)
+    rect rgb(128, 128, 128)
     alt Nenhuma tentativa funcionou
+            
+
         Service-->>Consumer: Erro: Não foi possível identificar todos os CPFs
     else Enriquecimento concluído
         Service-->>Consumer: Processamento concluído
+        
+    end
     end
 
     %% ETAPA 8: Finalização da mensagem
