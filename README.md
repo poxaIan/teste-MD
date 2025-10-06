@@ -9,9 +9,9 @@ A aplicação TRF3 Events é um sistema automatizado de busca e processamento de
 ## Setup
 
 1. **Criar arquivo .npmrc**
-   > [Gere o token em Settings → Developer settings → Personal access tokens → Tokens (classic)](https://github.com/settings/tokens)
-   >
-   > Substitua o token gerado em TOKEN
+   > Siga o [passo a passo](https://precatoprodutos.atlassian.net/wiki/pages/resumedraft.action?draftId=51347457&draftShareId=5c8b92fe-4138-4e1e-9f9a-4af30c0de090) para configurar o npmrc
+   > 
+   > Substitua o [token gerado](https://github.com/settings/tokens) em TOKEN
 
 ```bash
 @precato:registry=https://npm.pkg.github.com/
@@ -30,8 +30,8 @@ A aplicação TRF3 Events é um sistema automatizado de busca e processamento de
 > Copie as variáveis de ambiente do arquivo _.env.example_
 
 4. **Iniciar containers necessários**
-   - Ligar container do _rabbit_
-   - Ligar a aplicação do _database-server_
+   - Ligar container do [_rabbit_](https://precatoprodutos.atlassian.net/wiki/pages/resumedraft.action?draftId=51052546&draftShareId=6eeeb0f5-ebc1-4df4-9141-3f4377be5b35)
+   - Ligar a aplicação do [_database-server_](https://precatoprodutos.atlassian.net/wiki/pages/resumedraft.action?draftId=51085318&draftShareId=a88ab8df-a98a-4fb6-9e24-c34fb540294d)
 
 5. **Executar aplicação**
    ```bash
